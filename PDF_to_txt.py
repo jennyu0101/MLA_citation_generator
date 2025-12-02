@@ -1,25 +1,44 @@
-# app.py
 import streamlit as st
-from cite_master import CiteMaster   # CiteMaster 패키지 필요
+import requests
 
-st.title("MLA Citation Generator")
+st.title("MLA Citation Generator (DOI-based)")
 
-input_type = st.radio("Input type:", ["Paper title", "DOI"])
-if input_type == "Paper title":
-    paper_title = st.text_input("Enter the paper title")
-    user_input = paper_title.strip()
-elif input_type == "DOI":
-    doi = st.text_input("Enter the DOI (e.g. 10.1016/j.rser.2020.109984)")
-    user_input = doi.strip()
+doi = st.text_input("Enter DOI (e.g. 10.1038/nphys1170)")
 
-if st.button("Generate MLA citation"):
-    if not user_input:
-        st.warning("Please enter a paper title or DOI.")
+def generate_mla(doi):
+    url = f"https://api.crossref.org/works/{doi}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        return None
+
+    data = response.json()["message"]
+
+    authors = data.get("author", [])
+    if authors:
+        first_author = authors[0]
+        last = first_author.get("family", "")
+        first = first_author.get("given", "")
+        author_part = f"{last}, {first}, "
     else:
-        try:
-            cm = CiteMaster()  # create instance
-            # 예: format = 'mla', include_bibtex False
-            citation = cm.format_citation(user_input, style="mla")
-            st.text_area("MLA Citation", citation, height=150)
-        except Exception as e:
-            st.error(f"Error generating citation: {e}")
+        author_part = ""
+
+    title = data.get("title", [""])[0]
+    container = data.get("container-title", [""])[0]
+    year = data.get("published-print", {}).get("date-parts", [[None]])[0][0]
+
+    doi_link = f"https://doi.org/{doi}"
+
+    mla = f'{author_part}"{title}." {container}, {year}, {doi_link}.'
+    return mla
+
+
+if st.button("Generate MLA Citation"):
+    if not doi:
+        st.warning("Please enter a DOI.")
+    else:
+        mla = generate_mla(doi)
+        if mla:
+            st.text_area("MLA Citation", mla, height=200)
+        else:
+            st.e
