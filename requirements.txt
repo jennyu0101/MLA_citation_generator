@@ -1,2 +1,4 @@
 streamlit
 cite_master
+bibtexparser
+requests
